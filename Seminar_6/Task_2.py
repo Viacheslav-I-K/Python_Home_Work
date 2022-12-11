@@ -1,3 +1,4 @@
+# УЖЕ ИСПОЛЬЗОВАЛ list compehension на 19 строке
 '''
 Напишите программу, удаляющую из файла все слова, содержащие "абв".
 '''
@@ -21,7 +22,3 @@ print(type(lst_new))
 
 with open('file_new.txt', 'wt', encoding='utf-8') as f:
     f.write(str(" ".join(lst_new)))
-
-
-
-
