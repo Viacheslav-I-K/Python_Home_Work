@@ -5,7 +5,7 @@ from keyboard import *
 from keyboard_Phone import *
 from log import log
 from calculator import check_j, ration, result
-from functions import input_console, read_file, write_file, input_file, read_input_file, search_user_phone, delet_user
+from functions import input_console, read_file, write_file, input_file, read_input_file, search_user_phone, delet_user, write_html, read_input_file_html, mutationes_user_phone, input_mutationes
 
  
 TOKEN = '5894978113:AAFBmm537Wr4FX_eyFPqhjQebZ7Ti_7pK6k'
@@ -14,6 +14,7 @@ bot = TeleBot(TOKEN)
 
 value = ''
 old_value = ''
+search_index = -1
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -26,7 +27,6 @@ def answer(msg: types.Message):
 
 @bot.message_handler(commands=['calc'])
 def calc(msg):
-    print("Работа culc")
     log(f'user_id: {msg.from_user.id}, user_name: {msg.from_user.first_name}, text: {msg.text}, message_id: {msg.message_id}')
     global value
     if value == '':
@@ -40,8 +40,6 @@ def phone(msg):
     log(f'user_id: {msg.from_user.id}, user_name: {msg.from_user.first_name}, text: {msg.text}, message_id: {msg.message_id}')
     bot.send_message(chat_id=msg.from_user.id, text='Главное меню', reply_markup=keyboard_phone)
 
-
-@bot.callback_query_handler(func=lambda call:True)
 
 
 @bot.callback_query_handler(func=lambda call:True)
@@ -66,8 +64,13 @@ def callback_func(query):
         bot.send_message(chat_id=query.from_user.id, text=f'Вы выбрали: Ввод данных с клавиатуры.\n Введите данные в формате: \nИмя;Фамилия;Телефон;Комментарий')
         bot.register_next_step_handler(mes, user_add_manual)
     elif data == 'Импорт данных из файла':
+        bot.send_message(chat_id=query.from_user.id, text='Меню импорта данных из файла', reply_markup=keyboard_input_file)
+    elif data == 'Импорт из файла "csv"':
         bot.send_message(chat_id=query.from_user.id, text=f'Вы выбрали: Импорт данных из файла.\n Прикрепите файл в чате.')
         bot.register_next_step_handler(mes, user_add_file)
+    elif data == 'Импорт из файла "html"':
+        bot.send_message(chat_id=query.from_user.id, text=f'Вы выбрали: Импорт данных из файла.\n Прикрепите файл в чате.')
+        bot.register_next_step_handler(mes, user_add_file_html)
     elif data == 'Экспортировать файл "csv"':
         bot.send_message(chat_id=query.from_user.id, text=f'Вы выбрали: Экспортировать файл в формате "csv".')
         bot.send_document(chat_id=query.from_user.id, document=open('base.csv', 'rb'))
@@ -77,15 +80,20 @@ def callback_func(query):
         bot.send_message(chat_id=query.from_user.id, text=f'Экспорт файла в формате "xml" находится в разработке.')# РАЗРАБОТАТЬ и поменять заглушку
         bot.send_message(chat_id=query.from_user.id, text='Меню экспорта данных', reply_markup=keyboard_export)
     elif data == 'Экспортировать файл "html"':
-        bot.send_message(chat_id=query.from_user.id, text=f'Экспорт файла в формате "html" находится в разработке.')# РАЗРАБОТАТЬ и поменять заглушку
+        bot.send_message(chat_id=query.from_user.id, text=f'Вы выбрали: Экспортировать файл в формате "html".')
+        array = read_file()
+        write_html(array)
+        bot.send_document(chat_id=query.from_user.id, document=open('base.html', 'rb'))
+        os.remove('base.html')
         bot.send_message(chat_id=query.from_user.id, text='Меню экспорта данных', reply_markup=keyboard_export)
     elif data == 'Удалить пользователя':
         bot.send_message(chat_id=query.from_user.id, text=f'Вы выбрали: Удалить пользователя.')
         bot.send_message(chat_id=query.from_user.id, text=f'Введите номер телефона в чате.')
         bot.register_next_step_handler(mes, delete_user)
     elif data == 'Редактировать данные':
-        bot.send_message(chat_id=query.from_user.id, text=f'Меню редактирования данных находится в разработке.')# РАЗРАБОТАТЬ и поменять заглушку
-        bot.send_message(chat_id=query.from_user.id, text='Меню редактирования', reply_markup=keyboard_edit)
+        bot.send_message(chat_id=query.from_user.id, text=f'Введите номер телефона в чате.')
+        bot.register_next_step_handler(mes, search_mutationes_user)
+        #bot.send_message(chat_id=query.from_user.id, text='Меню редактирования', reply_markup=keyboard_edit)
     elif data == 'Печать всего списка':
         bot.send_message(chat_id=query.from_user.id, text=f'Вы выбрали: Печать всего списка.')
         array = read_file()
@@ -137,12 +145,41 @@ def delete_user(msg: types.Message):# Поиск пользователя по �
     else:
         log(f'Пользователь с номером телефона {msg.text} не найден')
         bot.send_message(chat_id=msg.from_user.id, text='Пользователь с таким номером телефона не найден.')
+    
+
+
+def search_mutationes_user(msg: types.Message):# Поиск пользователя по номеру телефона и определения номера индекса в списке
+    global search_index
+    array = read_file()
+    search_index = mutationes_user_phone(array, msg.text)
+    if search_index != -1:
+        log(f'Найден пользователь с искомым номером телефона: {msg.text} => {search_index}')
+        bot.send_message(chat_id=msg.from_user.id, text=f'Пользователь с номером телефона ({msg.text}) найден.')
+        bot.send_message(chat_id=msg.from_user.id, text=f'Введите новые данные пользователя в формате: \nИмя;Фамилия;Телефон;Комментарий')
+        bot.register_next_step_handler(msg, mutationes_user)
+    else:
+        log(f'Пользователь с номером телефона {msg.text} не найден')
+        bot.send_message(chat_id=msg.from_user.id, text='Пользователь с таким номером телефона не найден.')
+        bot.send_message(chat_id=msg.from_user.id, text='Меню редактирования', reply_markup=keyboard_edit)
+
+
+def mutationes_user(msg: types.Message):# Внесение изменений в данные пользователя по найденному в методе search_mutationes_user индексу
+    global search_index
+
+    array = read_file()
+    arr = input_mutationes(array, msg.text)
+    array[search_index] = arr
+    write_file(array)
+    bot.send_message(chat_id=msg.from_user.id, text=f'Данные пользователя успешно изменены!.')
     bot.send_message(chat_id=msg.from_user.id, text='Меню редактирования', reply_markup=keyboard_edit)
+
+    
+    #bot.send_message(chat_id=msg.from_user.id, text='Меню вывода информации', reply_markup=keyboard_print)
 
 
 def phone_search(msg: types.Message):# Поиск и вывод на экран пользователя с искомым номером телефона
     array = read_file()
-    search = search_user_phone(array, msg.text)
+    search = mutationes_user_phone(array, msg.text) 
     if search:
         log(f'Найден пользователь с искомым номером телефона: {msg.text} => {search}')
         bot.send_message(chat_id=msg.from_user.id, text='\n'.join(search))
@@ -152,8 +189,24 @@ def phone_search(msg: types.Message):# Поиск и вывод на экран 
     bot.send_message(chat_id=msg.from_user.id, text='Меню вывода информации', reply_markup=keyboard_print)
 
 
+def user_add_file_html(msg: types.Message):# Импортирует данные из файла html
+    filename = msg.document.file_name
+    log(f'пользователь прислал файл: {filename}')
+    with open(filename, 'wb') as file:
+        file.write(bot.download_file(bot.get_file(msg.document.file_id).file_path))
+    bot.send_message(chat_id=msg.from_user.id, text=f'Файл {filename} успешно получен.')
+    array_file = read_input_file_html(filename)
+    os.remove(filename)
+    log(f'Данные из файла: {filename} успешно считаны. Файл {filename} удален')
+    array_base = read_file()
+    array = input_file(array_base, array_file)
+    write_file(array)
+    bot.send_message(chat_id=msg.from_user.id, text=f'Импорт файла {filename} выполнен успешно.')
+    bot.send_message(chat_id=msg.from_user.id, text='Меню вывода информации', reply_markup=keyboard_print)
+    log(f'Файл: {filename} импортирован')
 
-def user_add_file(msg: types.Message):# Импортирует данные из файла
+
+def user_add_file(msg: types.Message):# Импортирует данные из файла csv
     filename = msg.document.file_name
     log(f'пользователь прислал файл: {filename}')
     with open(filename, 'wb') as file:
