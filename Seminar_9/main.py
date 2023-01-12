@@ -8,7 +8,7 @@ from calculator import check_j, ration, result
 from functions import input_console, read_file, write_file, input_file, read_input_file, search_user_phone, delet_user, write_html, read_input_file_html, mutationes_user_phone, input_mutationes
 
  
-TOKEN = '5894978113:AAFBmm537Wr4FX_eyFPqhjQebZ7Ti_7pK6k'
+TOKEN = ''
  
 bot = TeleBot(TOKEN)
 
